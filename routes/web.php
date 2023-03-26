@@ -3,9 +3,12 @@
 use App\Http\Controllers\AllPostsController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\PostsController;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TestController;
+use Illuminate\Support\Facades\Http;
+use  Laravel\Socialite\Two\AbstractProvider\stateless;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +39,7 @@ Route::group(['middleware'=>['auth']], function(){
         Route::post('/posts', [PostsController::class, 'store'])->name('posts.store');
 
         Route::put('/posts/{post}/edit',[PostsController::class, 'update'])->name('posts.update');
-        
+
     });
 
     Route::get('/posts/{post}/edit',[PostsController::class,'edit'])->name('posts.edit');
@@ -59,3 +62,61 @@ Route::group(['middleware'=>['auth']], function(){
 Auth::routes();
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+
+use Laravel\Socialite\Facades\Socialite;
+
+Route::get('/auth/redirect', function () {
+    return Socialite::driver('github')->redirect();
+});
+
+Route::get('/auth/callback', function () {
+    $githubUser = Socialite::driver('github')->stateless()->user();
+    // dd($githubUser);
+
+    $user = User::updateOrCreate([
+        'github_id' => $githubUser->id,
+    ], [
+        'name' => $githubUser->name,
+        'email' => $githubUser->email,
+        'github_token' => $githubUser->token,
+        'github_refresh_token' => $githubUser->refreshToken,
+        'password' => encrypt('gitpwd059'),
+    ]);
+    Auth::login($user);
+    return redirect()->route('posts.index');
+
+    // dd($user);
+
+    // $user->token
+});
+
+Route::get('/login/google', function () {
+    return Socialite::driver('google')->redirect();
+});
+
+
+Route::get('/login/google/callback', function () {
+    $googleUser = Socialite::driver('google')->stateless()->user();
+    // dd($googleUser);
+
+    $user = User::updateOrCreate([
+
+        'google_id' => $googleUser->id,
+    ], [
+        'name' => $googleUser->name,
+        'email' => $googleUser->email,
+        'google_token' => $googleUser->token,
+        'google_refresh_token' => $googleUser->refreshToken,
+        'password' => encrypt('googpwd059'),
+    ]);
+
+    Auth::login($user);
+    return redirect()->route('posts.index');
+});
+
+
+// Http::get('https://api.github.com.issues',[
+//     'Authorization' => 'Bearer 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 '
+// ]);
+
